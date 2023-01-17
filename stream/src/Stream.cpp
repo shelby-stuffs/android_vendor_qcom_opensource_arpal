@@ -149,6 +149,15 @@ Stream* Stream::create(struct pal_stream_attributes *sAttr, struct pal_device *d
                 dAttr[i].id = PAL_DEVICE_IN_ULTRASOUND_MIC;
             }
         }
+        if(noOfDevices > 1 && (dAttr[i].id == PAL_DEVICE_OUT_SPEAKER ||
+                                dAttr[i].id == PAL_DEVICE_OUT_WIRED_HEADSET ||
+                                dAttr[i].id == PAL_DEVICE_OUT_WIRED_HEADPHONE)) {
+           PAL_DBG(LOG_TAG, "isComboHeadsetActive true");
+           sAttr->isComboHeadsetActive = true;
+        } else {
+           PAL_DBG(LOG_TAG, "isComboHeadsetActive false");
+           sAttr->isComboHeadsetActive = false;
+        }
 
         //TODO: shift this to rm or somewhere else where we can read the supported config from xml
         palDevsAttr[count].id = dAttr[i].id;
@@ -191,96 +200,105 @@ Stream* Stream::create(struct pal_stream_attributes *sAttr, struct pal_device *d
 stream_create:
     PAL_DBG(LOG_TAG, "stream type 0x%x", sAttr->type);
     if (rm->isStreamSupported(sAttr, palDevsAttr, noOfDevices)) {
-        switch (sAttr->type) {
-            case PAL_STREAM_LOW_LATENCY:
-            case PAL_STREAM_DEEP_BUFFER:
-            case PAL_STREAM_GENERIC:
-            case PAL_STREAM_VOIP_TX:
-            case PAL_STREAM_VOIP_RX:
-            case PAL_STREAM_PCM_OFFLOAD:
-            case PAL_STREAM_VOICE_CALL:
-            case PAL_STREAM_LOOPBACK:
-            case PAL_STREAM_ULTRA_LOW_LATENCY:
-            case PAL_STREAM_PROXY:
-            case PAL_STREAM_HAPTICS:
-            case PAL_STREAM_RAW:
-            case PAL_STREAM_VOICE_RECOGNITION:
-                //TODO:for now keeping PAL_STREAM_PLAYBACK_GENERIC for ULLA need to check
-                stream = new StreamPCM(sAttr,
-                                       palDevsAttr,
-                                       noOfDevices,
-                                       modifiers,
-                                       noOfModifiers,
-                                       rm);
-                break;
-            case PAL_STREAM_COMPRESSED:
-                stream = new StreamCompress(sAttr,
-                                            palDevsAttr,
-                                            noOfDevices,
-                                            modifiers,
-                                            noOfModifiers,
-                                            rm);
-                break;
-            case PAL_STREAM_VOICE_UI:
-                stream = new StreamSoundTrigger(sAttr,
+        try {
+            switch (sAttr->type) {
+                case PAL_STREAM_LOW_LATENCY:
+                case PAL_STREAM_DEEP_BUFFER:
+                case PAL_STREAM_GENERIC:
+                case PAL_STREAM_VOIP_TX:
+                case PAL_STREAM_VOIP_RX:
+                case PAL_STREAM_PCM_OFFLOAD:
+                case PAL_STREAM_VOICE_CALL:
+                case PAL_STREAM_LOOPBACK:
+                case PAL_STREAM_ULTRA_LOW_LATENCY:
+                case PAL_STREAM_PROXY:
+                case PAL_STREAM_HAPTICS:
+                case PAL_STREAM_RAW:
+                case PAL_STREAM_VOICE_RECOGNITION:
+                    //TODO:for now keeping PAL_STREAM_PLAYBACK_GENERIC for ULLA need to check
+                    stream = new StreamPCM(sAttr,
+                                           palDevsAttr,
+                                           noOfDevices,
+                                           modifiers,
+                                           noOfModifiers,
+                                           rm);
+                    break;
+                case PAL_STREAM_COMPRESSED:
+                    stream = new StreamCompress(sAttr,
                                                 palDevsAttr,
                                                 noOfDevices,
                                                 modifiers,
                                                 noOfModifiers,
                                                 rm);
-                break;
-            case PAL_STREAM_VOICE_CALL_RECORD:
-            case PAL_STREAM_VOICE_CALL_MUSIC:
-                stream = new StreamInCall(sAttr,
-                                          palDevsAttr,
-                                          noOfDevices,
-                                          modifiers,
-                                          noOfModifiers,
-                                          rm);
-                break;
-            case PAL_STREAM_NON_TUNNEL:
-                stream = new StreamNonTunnel(sAttr,
-                                             NULL,
-                                             0,
-                                             modifiers,
-                                             noOfModifiers,
-                                             rm);
-                break;
-            case PAL_STREAM_ACD:
-                stream = new StreamACD(sAttr,
-                                       palDevsAttr,
-                                       noOfDevices,
-                                       modifiers,
-                                       noOfModifiers,
-                                       rm);
-                break;
-            case PAL_STREAM_CONTEXT_PROXY:
-                stream = new StreamContextProxy(sAttr,
-                                                NULL,
-                                                0,
-                                                modifiers,
-                                                noOfModifiers,
-                                                rm);
-                break;
-            case PAL_STREAM_ULTRASOUND:
-                stream = new StreamUltraSound(sAttr,
+                    break;
+                case PAL_STREAM_VOICE_UI:
+                    stream = new StreamSoundTrigger(sAttr,
+                                                    palDevsAttr,
+                                                    noOfDevices,
+                                                    modifiers,
+                                                    noOfModifiers,
+                                                    rm);
+                    break;
+                case PAL_STREAM_VOICE_CALL_RECORD:
+                case PAL_STREAM_VOICE_CALL_MUSIC:
+                    stream = new StreamInCall(sAttr,
                                               palDevsAttr,
                                               noOfDevices,
                                               modifiers,
                                               noOfModifiers,
                                               rm);
-                break;
-            case PAL_STREAM_SENSOR_PCM_DATA:
-                stream = new StreamSensorPCMData(sAttr,
-                                                 palDevsAttr,
-                                                 noOfDevices,
+                    break;
+                case PAL_STREAM_NON_TUNNEL:
+                    stream = new StreamNonTunnel(sAttr,
+                                                 NULL,
+                                                 0,
                                                  modifiers,
                                                  noOfModifiers,
                                                  rm);
-                break;
-            default:
-                PAL_ERR(LOG_TAG, "unsupported stream type 0x%x", sAttr->type);
-                break;
+                    break;
+                case PAL_STREAM_ACD:
+                    stream = new StreamACD(sAttr,
+                                           palDevsAttr,
+                                           noOfDevices,
+                                           modifiers,
+                                           noOfModifiers,
+                                           rm);
+                    break;
+                case PAL_STREAM_CONTEXT_PROXY:
+                    stream = new StreamContextProxy(sAttr,
+                                                    NULL,
+                                                    0,
+                                                    modifiers,
+                                                    noOfModifiers,
+                                                    rm);
+                    break;
+                case PAL_STREAM_ULTRASOUND:
+                    stream = new StreamUltraSound(sAttr,
+                                                  palDevsAttr,
+                                                  noOfDevices,
+                                                  modifiers,
+                                                  noOfModifiers,
+                                                  rm);
+                    break;
+                case PAL_STREAM_SENSOR_PCM_DATA:
+                    stream = new StreamSensorPCMData(sAttr,
+                                                     palDevsAttr,
+                                                     noOfDevices,
+                                                     modifiers,
+                                                     noOfModifiers,
+                                                     rm);
+                    break;
+                default:
+                    PAL_ERR(LOG_TAG, "unsupported stream type 0x%x", sAttr->type);
+                    break;
+            }
+        }
+        catch (const std::exception& e) {
+            PAL_ERR(LOG_TAG, "Stream create failed for stream type 0x%x", sAttr->type);
+            if (palDevsAttr) {
+                free(palDevsAttr);
+            }
+            throw std::runtime_error(e.what());
         }
     } else {
         PAL_ERR(LOG_TAG,"Requested config not supported");
@@ -1420,7 +1438,16 @@ int32_t Stream::switchDevice(Stream* streamHandle, uint32_t numDev, struct pal_d
         rm->getDeviceInfo((pal_device_id_t)newDeviceId,
                           type,newDevices[newDeviceSlots[i]].custom_config.custom_key,
                           &deviceInfo);
-
+        PAL_DBG(LOG_TAG,"newDeviceId %d connectCount:%d ",newDeviceId,connectCount);
+        if(connectCount > 1 && (newDeviceId == PAL_DEVICE_OUT_SPEAKER ||
+                                newDeviceId == PAL_DEVICE_OUT_WIRED_HEADSET ||
+                                newDeviceId == PAL_DEVICE_OUT_WIRED_HEADPHONE)) {
+           PAL_DBG(LOG_TAG, "isComboHeadsetActive true");
+           strAttr.isComboHeadsetActive = true;
+        } else {
+           PAL_DBG(LOG_TAG, "isComboHeadsetActive false");
+           strAttr.isComboHeadsetActive = false;
+        }
         /* This can result in below situation:
          * 1) No matching SharedBEStreamDev (handled in else part).
          *    e.g. - case 1a, 2.
@@ -1475,7 +1502,8 @@ int32_t Stream::switchDevice(Stream* streamHandle, uint32_t numDev, struct pal_d
                     strAttr.type != PAL_STREAM_VOIP_TX &&
                     strAttr.type != PAL_STREAM_VOIP &&
                     curDevAttr.id != newDevices[newDeviceSlots[i]].id) {
-                    newDevices[newDeviceSlots[i]].id = curDevAttr.id;
+                    ar_mem_cpy(&(newDevices[newDeviceSlots[i]]), sizeof(struct pal_device),
+                               &curDevAttr, sizeof(struct pal_device));
                     rm->getSndDeviceName(newDevices[newDeviceSlots[i]].id, CurrentSndDeviceName);
                     rm->updatePriorityAttr(newDevices[newDeviceSlots[i]].id,
                                        sharedBEStreamDev,
