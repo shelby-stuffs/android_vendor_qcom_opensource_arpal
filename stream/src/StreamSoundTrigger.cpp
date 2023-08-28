@@ -325,6 +325,11 @@ int32_t StreamSoundTrigger::start() {
 
     PAL_DBG(LOG_TAG, "Enter, stream direction %d", mStreamAttr->direction);
 
+    /*
+     * Guard with mActiveStreamMutex to avoid concurrent
+     * RX stream getting released during EC enable
+     */
+    rm->lockActiveStream();
     std::lock_guard<std::mutex> lck(mStreamMutex);
     // cache current state after mutex locked
     prev_state = currentState;
@@ -338,6 +343,7 @@ int32_t StreamSoundTrigger::start() {
     if (status)
         currentState = prev_state;
 
+    rm->unlockActiveStream();
     PAL_DBG(LOG_TAG, "Exit, status %d", status);
     return status;
 }
@@ -347,6 +353,11 @@ int32_t StreamSoundTrigger::stop() {
 
     PAL_DBG(LOG_TAG, "Enter, stream direction %d", mStreamAttr->direction);
 
+    /*
+     * Guard with mActiveStreamMutex to avoid concurrent
+     * RX stream getting released during EC disable
+     */
+    rm->lockActiveStream();
     std::lock_guard<std::mutex> lck(mStreamMutex);
     currentState = STREAM_STOPPED;
 
@@ -354,6 +365,7 @@ int32_t StreamSoundTrigger::stop() {
        new StStopRecognitionEventConfig(false));
     status = cur_state_->ProcessEvent(ev_cfg);
 
+    rm->unlockActiveStream();
     PAL_DBG(LOG_TAG, "Exit, status %d", status);
     return status;
 }
@@ -1903,7 +1915,7 @@ int32_t StreamSoundTrigger::notifyClient(bool detection) {
             (long long)total_process_duration);
         mStreamMutex.unlock();
         callback_((pal_stream_handle_t *)this, 0, (uint32_t *)rec_event,
-                  event_size, (uint64_t)rec_config_->cookie);
+                  event_size, cookie_);
 
         /*
          * client may call unload when we are doing callback with mutex
@@ -3142,6 +3154,13 @@ int32_t StreamSoundTrigger::StIdle::ProcessEvent(
                 goto connect_err;
             }
 
+            // sm_cfg_ must be initialized, if there was any device associated
+            // with this stream earlier
+            if (!st_stream_.sm_cfg_) {
+                PAL_DBG(LOG_TAG, "Defer device connection to model load");
+                goto connect_err;
+            }
+
             dev = st_stream_.GetPalDevice(dev_id, pal_dev, false);
             if (!dev) {
                 PAL_ERR(LOG_TAG, "Device creation failed");
@@ -3507,6 +3526,7 @@ int32_t StreamSoundTrigger::StLoaded::ProcessEvent(
             StDeviceConnectedEventConfigData *data =
                 (StDeviceConnectedEventConfigData *)ev_cfg->data_.get();
             pal_device_id_t dev_id = data->dev_id_;
+            std::vector<std::shared_ptr<SoundTriggerEngine>> tmp_engines;
 
             // mDevices should be empty as we have just disconnected device
             if (st_stream_.mDevices.size() != 0) {
@@ -3573,8 +3593,38 @@ int32_t StreamSoundTrigger::StLoaded::ProcessEvent(
             } else if (st_stream_.isActive() && !st_stream_.paused_) {
                 if (!rm->isDeviceActive_l(dev, &st_stream_))
                     st_stream_.rm->registerDevice(dev, &st_stream_);
+                if (st_stream_.second_stage_processing_) {
+                    /* Start the engines */
+                    for (auto& eng: st_stream_.engines_) {
+                        PAL_VERBOSE(LOG_TAG, "Start st engine %d", eng->GetEngineId());
+                        status = eng->GetEngine()->StartRecognition(&st_stream_);
+                        if (0 != status) {
+                            PAL_ERR(LOG_TAG, "Start st engine %d failed, status %d",
+                                    eng->GetEngineId(), status);
+                            goto err_start;
+                        } else {
+                            tmp_engines.push_back(eng->GetEngine());
+                        }
+                    }
+
+                    if (st_stream_.reader_)
+                        st_stream_.reader_->reset();
+                    st_stream_.second_stage_processing_ = false;
+                } else {
+                    st_stream_.gsl_engine_->UpdateStateToActive();
+                }
                 TransitTo(ST_STATE_ACTIVE);
-                st_stream_.gsl_engine_->UpdateStateToActive();
+            }
+            break;
+        err_start:
+            for (auto& eng: tmp_engines)
+                eng->StopRecognition(&st_stream_);
+
+            if (st_stream_.mDevices.size() > 0) {
+                st_stream_.rm->deregisterDevice(st_stream_.mDevices[0], &st_stream_);
+                st_stream_.mDevices[0]->stop();
+                st_stream_.mDevices[0]->close();
+                st_stream_.device_opened_ = false;
             }
         connect_err:
             delete pal_dev;

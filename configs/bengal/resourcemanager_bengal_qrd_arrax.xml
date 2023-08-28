@@ -140,7 +140,7 @@ should always be in sync with it -->
                 </custom-config>
                 <custom-config key="unprocessed-hdr-mic-inverted-portrait">
                     <channels>4</channels>
-                <snd_device_name>unprocessed-hdr-mic-inverted-portrait</snd_device_name>
+                    <snd_device_name>unprocessed-hdr-mic-inverted-portrait</snd_device_name>
                </custom-config>
             </usecase>
             <ec_rx_device>
@@ -156,10 +156,6 @@ should always be in sync with it -->
             <bit_width>16</bit_width>
             <channels>1</channels>
             <snd_device_name>speaker-mic</snd_device_name>
-        <!-- Comment the channels and backend lines and uncomment this when speaker-dmic-endfire is needed
-            <channels>2</channels>
-            <snd_device_name>speaker-dmic-endfire</snd_device_name>
-        -->
             <usecase>
                 <name>PAL_STREAM_LOW_LATENCY</name>
                 <devicePP-metadata>
@@ -176,9 +172,11 @@ should always be in sync with it -->
             </usecase>
             <usecase>
                 <name>PAL_STREAM_VOIP_TX</name>
+                <channels>2</channels>
+                <snd_device_name>speaker-dmic-endfire</snd_device_name>
                 <devicePP-metadata>
-                    <kvpair key="0xAD000000" value="0xAD000007"/>
-                    <!-- VOIP_FLUENCE_SMECNS -->
+                    <kvpair key="0xAD000000" value="0xAD000010"/>
+                    <!-- VOIP_FLUENCE_FNN -->
                     <!-- These key and value are derived from kvh2xml.h and
 should always be in sync with it -->
                 </devicePP-metadata>
@@ -192,6 +190,11 @@ should always be in sync with it -->
                     <!-- VOICE_FLUENCE_SMECNS -->
                     <!-- These key and value are derived from kvh2xml.h and
 should always be in sync with it -->
+                </devicePP-metadata>
+            </usecase>
+            <usecase>
+                <name>PAL_STREAM_LOOPBACK</name>
+                <devicePP-metadata>
                 </devicePP-metadata>
             </usecase>
             <usecase>
@@ -212,12 +215,7 @@ should always be in sync with it -->
                 <custom-config key="unprocessed-hdr-mic-inverted-portrait">
                     <channels>4</channels>
                     <snd_device_name>unprocessed-hdr-mic-inverted-portrait</snd_device_name>
-                </custom-config>
-            </usecase>
-            <usecase>
-                <name>PAL_STREAM_LOOPBACK</name>
-                <devicePP-metadata>
-                </devicePP-metadata>
+               </custom-config>
             </usecase>
             <usecase>
                 <name>PAL_STREAM_ULTRA_LOW_LATENCY</name>
@@ -469,7 +467,6 @@ should always be in sync with it -->
             </usecase>
             <usecase>
                 <name>PAL_STREAM_VOIP_RX</name>
-                <samplerate>16000</samplerate>
                 <priority>3</priority>
             </usecase>
         </out-device>
@@ -623,13 +620,9 @@ should always be in sync with it -->
             <back_end_name>SLIM-DEV1-RX-7</back_end_name>
             <max_channels>1</max_channels>
             <channels>1</channels>
-            <snd_device_name>bt-sco</snd_device_name>
+            <snd_device_name>bt-a2dp</snd_device_name>
             <samplerate>8000</samplerate>
             <bit_width>16</bit_width>
-            <usecase>
-                <name>PAL_STREAM_VOICE_CALL</name>
-                <priority>1</priority>
-            </usecase>
         </out-device>
     </device_profile>
     <in_streams>
@@ -671,13 +664,13 @@ should always be in sync with it -->
                 </policies>
         </in_stream>
         <in_stream>
-           <name>PAL_STREAM_COMPRESSED</name>
-              <policies>
-                  <ec_ref>
-                      <disabled_stream>PAL_STREAM_LOW_LATENCY</disabled_stream>
-                      <disabled_stream>PAL_STREAM_GENERIC</disabled_stream>
-                  </ec_ref>
-              </policies>
+            <name>PAL_STREAM_COMPRESSED</name>
+               <policies>
+                   <ec_ref>
+                       <disabled_stream>PAL_STREAM_LOW_LATENCY</disabled_stream>
+                       <disabled_stream>PAL_STREAM_GENERIC</disabled_stream>
+                   </ec_ref>
+               </policies>
        </in_stream>
     </in_streams>
     <sound_trigger_platform_info>
@@ -702,7 +695,7 @@ ports not conflicting with other audio paths  -->
             <param mmap_frame_length="5" /> <!-- 5ms duration of data -->
         </common_config>
         <capture_profile_list>
-            <capture_profile name="SINGLE_MIC_16KHZ_16BIT_HEADSET_FFECNS">
+             <capture_profile name="SINGLE_MIC_16KHZ_16BIT_HEADSET_FFECNS">
                 <param sample_rate="16000" />
                 <param channels="1" />
                 <param bit_width="16" />

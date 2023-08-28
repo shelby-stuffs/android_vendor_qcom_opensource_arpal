@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -87,12 +87,14 @@
 #include "ACDPlatformInfo.h"
 #include "ContextManager.h"
 #include "SignalHandler.h"
+#include <fstream>
 
 typedef enum {
     RX_HOSTLESS = 1,
     TX_HOSTLESS,
 } hostless_dir_t;
 
+#define ARRAX_SOC_ID 585
 #define audio_mixer mixer
 #define MAX_SND_CARD 10
 #define DUMMY_SND_CARD MAX_SND_CARD
@@ -578,6 +580,8 @@ public:
     static bool mixerClosed;
     enum card_status_t cardState;
     bool ssrStarted = false;
+    /* Variable to cache a2dp suspended state for a2dp device */
+    static bool a2dp_suspended;
     //Variable to check if multiple sampe rate during combo device supported
     bool is_multiple_sample_rate_combo_supported = true;
     /* Variable to store whether Speaker protection is enabled or not */
@@ -745,6 +749,8 @@ public:
     bool updateDeviceConfig(std::shared_ptr<Device> *inDev,
              struct pal_device *inDevAttr, const pal_stream_attributes* inStrAttr);
     int32_t forceDeviceSwitch(std::shared_ptr<Device> inDev, struct pal_device *newDevAttr);
+    int32_t forceDeviceSwitch(std::shared_ptr<Device> inDev, struct pal_device *newDevAttr,
+                              std::vector <Stream *> prevActiveStreams);
     const std::string getPALDeviceName(const pal_device_id_t id) const;
     bool isNonALSACodec(const struct pal_device *device) const;
     bool isNLPISwitchSupported(pal_stream_type_t type);
@@ -927,5 +933,26 @@ public:
                              struct pal_device *streamDevAttr);
     static void sendCrashSignal(int signal, pid_t pid, uid_t uid);
 };
+
+static int getSocId() {
+    std::ifstream fd;
+    std::string strData;
+    int soc_id = -1;
+    std::string socbuf = "/sys/devices/soc0/soc_id";
+    fd.open(socbuf, std::ios::in);
+    if (!fd.is_open()) {
+        PAL_ERR(LOG_TAG, "Unable to open file");
+        return -1;
+    }
+
+    getline(fd, strData);
+    if (strData.length() != 0) {
+        soc_id = stoi(strData);
+    } else {
+        PAL_ERR(LOG_TAG, "id is null");
+    }
+    fd.close();
+    return soc_id;
+}
 
 #endif

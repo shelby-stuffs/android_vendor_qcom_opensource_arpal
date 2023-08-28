@@ -156,10 +156,6 @@ should always be in sync with it -->
             <bit_width>16</bit_width>
             <channels>1</channels>
             <snd_device_name>speaker-mic</snd_device_name>
-        <!-- Comment the channels and backend lines and uncomment this when speaker-dmic-endfire is needed
-            <channels>2</channels>
-            <snd_device_name>speaker-dmic-endfire</snd_device_name>
-        -->
             <usecase>
                 <name>PAL_STREAM_LOW_LATENCY</name>
                 <devicePP-metadata>
@@ -176,9 +172,11 @@ should always be in sync with it -->
             </usecase>
             <usecase>
                 <name>PAL_STREAM_VOIP_TX</name>
+                <channels>2</channels>
+                <snd_device_name>speaker-dmic-endfire</snd_device_name>
                 <devicePP-metadata>
-                    <kvpair key="0xAD000000" value="0xAD000007"/>
-                    <!-- VOIP_FLUENCE_SMECNS -->
+                    <kvpair key="0xAD000000" value="0xAD000010"/>
+                    <!-- VOIP_FLUENCE_NN -->
                     <!-- These key and value are derived from kvh2xml.h and
 should always be in sync with it -->
                 </devicePP-metadata>
