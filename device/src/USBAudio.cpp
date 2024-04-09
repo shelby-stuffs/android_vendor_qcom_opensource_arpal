@@ -475,13 +475,13 @@ int USBCardConfig::getCapability(usb_usecase_type_t type,
         check = true;
 
     while (str_start != NULL) {
-        str_start = strstr(str_start, "Altset");
+        str_start = strstr(str_start, "Altset ");
         if ((str_start == NULL) || (check  && (str_start >= str_end))) {
             PAL_VERBOSE(LOG_TAG,"done parsing %s\n", str_start);
             break;
         }
         PAL_VERBOSE(LOG_TAG,"remaining string %s\n", str_start);
-        str_start += sizeof("Altset");
+        str_start += sizeof("Altset ");
         std::shared_ptr<USBDeviceConfig> usb_device_info(new USBDeviceConfig());
         if (!usb_device_info) {
             PAL_ERR(LOG_TAG, "error unable to create usb device config object");
@@ -491,7 +491,7 @@ int USBCardConfig::getCapability(usb_usecase_type_t type,
         usb_device_info->setType(type);
         /* Bit bit_width parsing */
         bit_width_start = strstr(str_start, "Format: ");
-        if (bit_width_start == NULL) {
+        if (bit_width_start == NULL || (check && (bit_width_start >= str_end))) {
             PAL_INFO(LOG_TAG, "Could not find bit_width string");
             continue;
         }
@@ -525,7 +525,7 @@ int USBCardConfig::getCapability(usb_usecase_type_t type,
 
         /* channels parsing */
         channel_start = strstr(str_start, CHANNEL_NUMBER_STR);
-        if (channel_start == NULL) {
+        if (channel_start == NULL || (check && (channel_start >= str_end))) {
             PAL_INFO(LOG_TAG, "could not find Channels string");
             continue;
         }
@@ -534,7 +534,7 @@ int USBCardConfig::getCapability(usb_usecase_type_t type,
 
         /* Sample rates parsing */
         rates_str_start = strstr(str_start, "Rates: ");
-        if (rates_str_start == NULL) {
+        if (rates_str_start == NULL || (check && (rates_str_start >= str_end))) {
             PAL_INFO(LOG_TAG, "cant find rates string");
             continue;
         }
@@ -741,16 +741,12 @@ unsigned int USBCardConfig::readSupportedChannelMask(bool is_playback, uint32_t 
         channels = MAX_HIFI_CHANNEL_COUNT;
 
     if (is_playback) {
-        // start from 2 channels as framework currently doesn't support mono.
-        if (channels >= 2) {
-            channel[num_masks++] = audio_channel_out_mask_from_count(2);
-        }
-        for (channel_count = 2;
-                channel_count <= channels && num_masks < MAX_SUPPORTED_CHANNEL_MASKS;
-                ++channel_count) {
-            channel[num_masks++] =
-                    audio_channel_mask_for_index_assignment_from_count(channel_count);
-        }
+        channel[num_masks++] = channels <= 2
+                     /* position mask for mono and stereo*/
+                     ? audio_channel_out_mask_from_count(channels)
+                     /* otherwise indexed */
+                     : audio_channel_mask_for_index_assignment_from_count(channels);
+        // TODO: needs to figure out the accurate match of channel mask
     } else {
         // For capture we report all supported channel masks from 1 channel up.
         channel_count = MIN_CHANNEL_COUNT;
